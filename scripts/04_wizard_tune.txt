@@ -1,0 +1,184 @@
+MacroName wizard_tune
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_tune
+# Author: Simon Fromm
+# Version: 1.0.1
+# SerialEM version: 4.2.X or higher
+# Last update: 18.06.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+SuppressReports
+
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Starting LowDoseWizard TUNING routine
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+
+#################################################
+# Read in optics config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile optics $repVal1\wizard_optics_config.txt
+CallStringArray optics
+
+#################################################
+# User prompts
+#################################################
+
+IsVariableDefined type
+If $repVal1 == 1
+   If $type == 1
+      EnterDefaultedNumber $TargetDefocus_tomo 1 At which defocus would you like to perform astigmatism/coma tuning? (typically -2 for SPA and -6 for tomography)
+      defocus_tuning := $repVal1
+   ElseIf $type == 2
+      EnterDefaultedNumber $TargetDefocus_SPA 1 At which defocus would you like to perform astigmatism/coma tuning? (typically -2 for SPA and -6 for tomography)
+      defocus_tuning := $repVal1
+   Endif
+Else
+   If $EnableTomo == 0
+      EnterDefaultedNumber -2 1 At which defocus would you like to perform astigmatism/coma tuning? (typically -2 for SPA and -6 for tomography)
+      defocus_tuning := $repVal1
+   ElseIf $EnableTomo == 1
+      EnterDefaultedNumber -6 1 At which defocus would you like to perform astigmatism/coma tuning? (typically -2 for SPA and -6 for tomography)
+      defocus_tuning := $repVal1
+   Endif
+Endif
+Echo Astigmatism and coma-free alignment will be performed at $defocus_tuning um defocus (set by Z height).
+
+ParseQuotedStrings 1
+header = { 'Which objective apeture size (in um) would you like to use? Choose' }
+prompt1 = { 'No objective aperture to keep it retracted after coma tuning.' }
+prompt2 = { '$ObjectiveAperture_1 um' }
+prompt3 = { '$ObjectiveAperture_2 um' }
+buttons = { 'No objective aperture' '$ObjectiveAperture_1 um' '$ObjectiveAperture_2 um' }
+ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+If $repVal1 == 1
+   objap = 0
+   Echo Objective aperture chosen to stay retracted after coma-free alignment.
+   Echo
+ElseIf $repVal1 == 2
+   objap = $ObjectiveAperture_1
+   Echo After coma-free alignment, $objap um objective aperture will be inserted and auto-stigmated.
+   Echo
+ElseIf $repVal1 == 3
+   objap = $ObjectiveAperture_2
+   Echo After coma-free alignment, $objap um objective aperture will be inserted and auto-stigmated.
+   Echo
+Endif
+ParseQuotedStrings 0
+
+OKBox Please make sure that the autoloader turbo is set to 'Turbo Auto Off (default)'.
+
+#################################################
+# Set area for microscope tuning
+#################################################
+
+ParseQuotedStrings 1
+header = { 'Do you want to do microcope tuning at the current stage position or move to the pre-defined sample area?' }
+prompt1 = { '1: Current position' }
+prompt2 = { '2: sample position marked in the Navigator' }
+buttons = { '1: Current' '2: sample' }
+ThreeChoiceBox header prompt1 prompt2 buttons
+If $repVal1 == 2
+   MoveToNavItem $sample
+Endif
+ParseQuotedStrings 0
+
+SetColumnOrGunValve 1
+
+# Refine are with view
+V
+YesNoBox Is the center of the current field of view suitable for astigmatism/coma tuning, i.e. gives sufficient Thon rings?
+If $repVal1 == 0
+   CallFunction drag_V
+Endif
+
+# Reset image shift
+GoToLowDoseArea R
+ResetImageShift
+
+# Retrieve Record mag
+ReportMag
+mag = $repVal1
+
+# Retract objective aperture
+ReportApertureSize 2
+If $repVal1 != 0
+   SetApertureSize 2 0
+Endif
+
+ScreenDown
+Pause Center beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click Yes to continue
+ScreenUp
+
+# Set Z-height to have user defined defocus at eucentric focus
+ReportAxisPosition F
+dist = $repVal1
+rot = $repVal2
+SetAxisPosition F 0 0
+YesNoBox Are you at or close to Eucentric height?
+If $repVal1 == 1
+   CallFunction ZwithG
+   CallFunction ZwithG
+ElseIf $repVal1 == 0
+   CallFunction ZwithV
+   CallFunction ZwithG
+   CallFunction ZwithG
+Endif
+
+# Stage settling afer Z-height adjustment
+Delay 5 sec
+
+# Auto-stigmate
+CallFunction AutoFill
+FixAstigmatismByCTF 0 1
+
+# Coma-free alignment
+CallFunction AutoFill
+FixComaByCTF 0 1 0
+
+# Insert and center objective aperture
+If $objap != 0
+   ScreenDown
+   SetApertureSize 2 $objap
+   SetCamLenIndex $Cam_length
+   Delay 5 sec
+   OKBox Please center objective aperture and click OK when done. \
+   The objective aperture is already inserted and the microscope is in diffraction mode with the FluScreen is inserted.
+   SetMag $mag
+   GoToLowDoseArea V
+   GoToLowDoseArea R
+   Delay 3 sec
+   Pause Center beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click Yes to continue
+   ScreenUp
+   Delay 5 sec
+   CallFunction AutoFill
+   FixAstigmatismByCTF 0 1
+Endif
+
+SetAxisPosition F $dist $rot
+
+MakeVarPersistent defocus_tuning 0
+
+#################################################
+# Make variables persistent
+#################################################
+
+MakeVarPersistent objap
+
+#################################################
+# Closing message
+#################################################
+
+OKBox Completed LowDoseWizard TUNING routine. Astigmatism and coma-free alignment is completed.
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Completed LowDoseWizard TUNING routine.
+Echo Astigmatism and coma-free alignment is completed.
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo

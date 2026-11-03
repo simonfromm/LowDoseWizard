@@ -1,0 +1,23 @@
+#################################################
+#LowDoseWizard system configuration file
+# Specific to a microscope. HERE: Krios2, EMBL MSB Unit
+#Save into same folder as SerialEM Properties file
+#GENERALLY NO SPACES ALLOWED
+##################################################
+
+# LowDoseWizard workflow configuration
+EnergyFilter := 1        #0 -> NO energy filter; 1 -> energy filter
+UseSerialEMRefineZLP := 0   # 0 -> Don't use SerialEM zero-loss centering routine; 1 -> use it; set to 0 if no Energy filter available
+EnableTomo := 1          #0 -> only SPA workflow; 1 -> Tomo and SPA workflow
+CondenserConfig := 3     #2 -> 2-condenser system; 3 -> 3-condenser system
+
+# System information for summary file
+InstituteA := EMBL
+InstituteB := MSB          #add-on instiute name in case instiuteA is not sufficient; leave empty if no need
+Tem_model := TitanKriosG3           #e.g. Glacios, TalosArctica, TitanKriosG4, cryoARM200
+Tem_special := XFEG                  #special TEM configuration; e.g. FFI, Cs-corrected; leave empty if not applicable
+Tem_name := Krios2                #internally used name tag for the microsope
+Acc_volt := 300                     #acceleration voltage in kV
+Cs := 2.7                           #objective lens Cs in mm
+EnergyFilter_model := BioQuantum    #leave empty if system has no energy filter
+Detector_model := K3

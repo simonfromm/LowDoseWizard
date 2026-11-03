@@ -1,0 +1,125 @@
+MacroName wizard_objap
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_objap
+# Author: Simon Fromm
+# Version: 1.0
+# SerialEM version: 4.2.X or higher
+# Last update: 22.04.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+SuppressReports
+
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Starting LowDoseWizard OBJECTIVE APERTURE routine
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+
+#################################################
+# Read in optics config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile optics $repVal1\wizard_optics_config.txt
+CallStringArray optics
+
+#################################################
+# User prompts
+#################################################
+
+ParseQuotedStrings 1
+header = { 'Which objective apeture size (in um) would you like to use? Choose' }
+prompt1 = { '$ObjectiveAperture_1 um or' }
+prompt2 = { '$ObjectiveAperture_2 um' }
+buttons = { '$ObjectiveAperture_1 um' '$ObjectiveAperture_2 um'}
+ThreeChoiceBox header prompt1 prompt2 buttons
+If $repVal1 == 1
+   objap := $ObjectiveAperture_1
+   Echo $objap um objective aperture will be inserted.
+ElseIf $repVal1 == 2
+   objap := $ObjectiveAperture_2
+   Echo $objap um objective aperture will be inserted.
+Endif
+ParseQuotedStrings 0
+
+YesNoBox Would you like to correct objective lens astigmatism after aperture insertion?
+astig = $repVal1
+If $astig == 1
+   EnterDefaultedNumber -2 1 At which defocus would you like to perform astigmatism correction? (typically -2 for SPA and -6 for tomography)
+   defocus_tuning := $repVal1
+Endif
+
+#################################################
+# Set area for objective aperture centering
+################################################
+
+MoveToNavItem $sample
+
+# Check eucentricity
+SetColumnOrGunValve 1
+YesNoBox Is the 'sample' area at eucentric height?
+If $repVal1 == 0
+   V
+   YesNoBox Is the current image/area suitable eucentric height determination?
+   If $repVal1 == 0
+      CallFunction drag_V
+   Endif
+   CallFunction ZwithV
+   CallFunction ZwithG
+Endif
+
+# Check area
+V
+YesNoBox Is there some foil (carbon or gold) in the center of the image?
+If $repVal1 == 0
+   CallFunction drag_V
+Endif
+
+ResetImageShift
+
+# Retrieve record mag
+GoToLowDoseArea R
+SetAbsoluteFocus 0
+Delay 1 s
+ResetDefocus
+ReportMag
+mag = $repVal1
+
+
+# Insert and center objective aperture
+ScreenDown
+SetApertureSize 2 $objap
+SetCamLenIndex $Cam_length
+Delay 5 sec
+OKBox Please center objective aperture and click OK when done. \
+The objective aperture is already inserted and the microscope is in diffraction mode with the FluScreen is inserted.
+SetMag $mag
+GoToLowDoseArea V
+GoToLowDoseArea R
+Delay 3 sec
+Pause Center beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click Yes to continue
+ScreenUp
+Delay 5 sec
+
+# Perform astigmatism correction
+If $astig == 1
+   CallFunction ZwithG
+   CallFunction ZwithG
+   CallFunction AutoFill
+   FixAstigmatismByCTF 0 1
+Endif
+
+#################################################
+# Closing message
+#################################################
+
+OKBox Completed LowDoseWizard OBJECTIVE APERTURE routine; $objap micron objective aperture has been inserted.
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Completed LowDoseWizard OBJECTIVE APERTURE routine.
+Echo $objap micron objective aperture has been inserted.
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo

@@ -1,0 +1,157 @@
+MacroName Functions
+############################
+
+Function AutoFill
+SuppressReports
+
+Loop 20
+   AreDewarsFilling
+   If $repVal1 == 0
+      Break
+   Elseif $repVal1 == 1
+      Echo Dewars are filling.
+      Delay 60 sec
+   Endif
+Endloop
+
+EndFunction
+
+############################
+
+Function ZwithV
+   GoToLowDoseArea V
+   ReportMag
+   If $repVal1 == 0
+      correction = 5
+   Else
+      correction = 0
+   Endif
+   ReportLDDefocusOffset V
+   SetDefocus $repVal1
+   G -1 2
+   ReportAutofocus
+   t  =  -1 * $RepVal1 - 1 + $correction
+   If $t >= 0
+      changeZ = $t + 3
+      MoveStage 0 0 $changeZ
+      MoveStage 0 0 -3
+   Elseif $t <= 0
+      MoveStage 0 0 $t
+   Endif
+   Echo --> Z moved $t micron
+EndFunction
+
+############################
+
+Function ZwithG
+   GoToLowDoseArea R
+   IsVariableDefined defocus_tuning
+   If $repVal1 == 1
+      correction = $defocus_tuning + 1
+   Else
+      correction = 0
+   Endif
+   SetDefocus 0
+   G -1
+   ReportAutofocus
+   t  =  -1 * $RepVal1 - 1 + $correction
+   If $t >= 0
+      changeZ = $t + 3
+      MoveStage 0 0 $changeZ
+      MoveStage 0 0 -3
+   Elseif $t <= 0
+      MoveStage 0 0 $t
+   Endif
+   Echo --> Z moved $t micron
+EndFunction
+
+############################
+###concept taken from PACETomo
+
+Function drag_S
+   Loop 5
+      OKBox Refine the position with right click drag. Press the <S> key when done to take a new Search image.
+      Loop 1000
+         KeyBreak s
+         Delay 0.1 sec
+      EndLoop
+      Search
+      YesNoBox Are you happy with the refined position?
+      If $repVal1 == 1
+         Break
+      Endif
+   EndLoop
+EndFunction
+
+############################
+###concept taken from PACETomo
+
+Function drag_V
+   Loop 5
+      OKBox Refine the position with right click drag. Press the <V> key when done to take a new View image.
+      Loop 1000
+         KeyBreak v
+         Delay 0.1 sec
+      EndLoop
+      V
+      YesNoBox Are you happy with the refined position?
+      If $repVal1 == 1
+         Break
+      Endif
+   EndLoop
+EndFunction
+
+####################
+###concept taken from PACETomo
+
+Function drag_P
+   Loop 5
+      OKBox Refine the position with right click drag. Press the <P> key when done to take a new Preview image.
+      Loop 1000
+         KeyBreak p
+         Delay 0.1 sec
+      EndLoop
+      L
+      YesNoBox Are you happy with the refined position?
+      If $repVal1 == 1
+         Break
+      Endif
+   EndLoop
+EndFunction
+
+####################
+
+Function set_ld-area 7 1 mag c2 spot probe defocus slitw slito area
+   GoToLowDoseArea $area
+   SetLDContinuousUpdate 1
+   SetProbeMode $probe
+   SetSpotSize $spot
+   SetMag $mag
+   SetPercentC2 $c2
+   SetAbsoluteFocus 0
+   Delay 1 s
+   ResetDefocus
+   Delay 1 s
+   SetDefocus $defocus
+   Delay 1 s
+   If $EnergyFilter == 1
+      SetSlitIn 1
+      SetSlitWidth $slitw
+      SetEnergyLoss $slito
+   Endif
+   UpdateLowDoseParams $area 1
+   SetLDContinuousUpdate 0
+EndFunction
+
+####################
+
+Function set_camera 8 1 exptime bin frac frames align plugin counting processing area
+   SetDoseFracParams $area $frac $frames $align $plugin
+   SetExposure $area $exptime
+   SetBinning $area $bin
+   SetCameraArea $area F
+   SetContinuous $area 0
+   SetK2ReadMode $area $counting
+   SetProcessing $area $processing
+   KeepCameraSetChanges $area
+EndFunction

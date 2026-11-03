@@ -1,0 +1,252 @@
+MacroName LowDoseWizard
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: LowDoseWizard
+# Author: Simon Fromm
+# Version: 1.0
+# SerialEM version: 4.2.X or higher
+# Last update: 22.04.2026
+# Support: simon.fromm@embl.de
+###################################################################
+
+Echo
+Echo =================================================
+Echo Starting LowDoseWizard.
+Echo =================================================
+
+#################################################
+# Cleanup any carry-over variables for a fresh start
+#################################################
+SetColumnOrGunValve 0
+
+ClearPersistentVars
+SuppressReports
+
+ReportNumOpenFiles
+Loop $repVal1
+   CloseFile
+EndLoop
+
+IsTextFileOpen PAR
+If $repVal1 == 1
+   CloseTextFile PAR
+Endif
+
+#################################################
+# Load system config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile system $repVal1\wizard_system_config.txt
+CallStringArray system
+
+#################################################
+# Define the NavItem # for empty and sample area
+#################################################
+ReportOtherItem -1
+total = $repVal1
+Loop $total index
+   ReportOtherItem $index
+   CompareStrings navLabel empty
+   If $repVal1 == 0
+      empty = $index
+      Break
+   Endif
+EndLoop
+
+Loop $total index
+   ReportOtherItem $index
+   CompareStrings navLabel sample
+   If $repVal1 == 0
+      sample = $index
+      Break
+   Endif
+EndLoop
+
+# Check if both empty and sample have been found
+IsVariableDefined empty
+If $repVal1 == 0
+   OKBox No empty area is defined. Please add a point at an empty area on your grid map (atlas) and change its label in the Navigtor window to 'empty'. Then restart theLowDoseWizard.
+   Exit No empty area is defined. Please add a point at an empty area on your grid map (atlas) and change its label in the Navigator window to 'empty'. Then restart the LowDoseWizard.
+Endif
+
+IsVariableDefined sample
+If $repVal1 == 0
+   OKBox No sample area is defined. Please add a point at a sacrificial sample area on your grid map (atlas) and change its label in the Navigator window to 'sample'. Then restart theLowDoseWizard.
+   Exit No sample area is defined. Please add a point at a sacrificial sample area on your grid map (atlas) and change its label in the Navigator window to 'sample'. Then restart the LowDoseWizard.
+Endif
+
+MakeVarPersistent empty
+MakeVarPersistent sample
+
+#################################################
+# Call the low dose OPTICS setup routine
+#################################################
+####################TIMING#######################
+ReportTickTime
+start = $repVal1
+####################TIMING#######################
+
+ParseQuotedStrings 1
+header = { 'Do you want to setup Low Dose Mode OPTICS (areas)? Can be skipped if already done and the Wizard will continue with other routines.' }
+prompt1 = { '1: YES' }
+prompt2 = { '2: NO, but continue with the Wizard.' }
+prompt3 = { '3: Get me out of the Wizard.' }
+buttons = { '1: Yes' '2: No' '3: Abort Wizard' }
+ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+If $repVal1 == 1
+   FindScriptByName wizard_optics
+   CallScript -1
+ElseIf $repVal1 == 2
+   Echo Low dose areas (optics) have not been modified.
+ElseIf $repVal1 == 3
+   SetColumnOrGunValve 0
+   OKBox LowDoseWizard aborted as per user request. Column Valves are closed.
+   Exit LowDoseWizard aborted as per user request. Column Valves are closed.
+Endif
+ParseQuotedStrings 0
+
+####################TIMING#######################
+ElapsedTickTime $start
+TIME = $repVal1
+Echo Optics took $TIME sec
+####################TIMING#######################
+#################################################
+# Call the CAMERA setup routine
+#################################################
+####################TIMING#######################
+ReportTickTime
+start = $repVal1
+####################TIMING#######################
+
+ParseQuotedStrings 1
+header = { 'Do you want to run the CAMERA setup routine to calibrate flux and set optimal exposure times?' }
+prompt1 = { '1: YES' }
+prompt2 = { '2: NO, but continue with the Wizard.' }
+prompt3 = { '3: Get me out of the Wizard.' }
+buttons = { '1: Yes' '2: No' '3: Abort Wizard' }
+ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+If $repVal1 == 1
+   FindScriptByName wizard_camera
+   CallScript -1
+ElseIf $repVal1 == 2
+   Echo Camera settings have not been touched!
+ElseIf $repVal1 == 3
+   SetColumnOrGunValve 0
+   OKBox LowDoseWizard aborted as per user request. Column Valves are closed.
+   Exit LowDoseWizard aborted as per user request. Column Valves are closed.
+Endif
+ParseQuotedStrings 0
+
+####################TIMING#######################
+ElapsedTickTime $start
+TIME = $repVal1
+Echo Camera took $TIME sec
+####################TIMING#######################
+#################################################
+# Call the IMAGE SHIFT offset calibration routine
+#################################################
+####################TIMING#######################
+ReportTickTime
+start = $repVal1
+####################TIMING#######################
+
+ParseQuotedStrings 1
+header = { 'Do you want to calibrate the IMAGE SHIFT offsets between Record, View and Search?' }
+prompt1 = { '1: YES' }
+prompt2 = { '2: NO, but continue with the Wizard.' }
+prompt3 = { '3: Get me out of the Wizard.' }
+buttons = { '1: Yes' '2: No' '3: Abort Wizard' }
+ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+If $repVal1 == 1
+   FindScriptByName wizard_imageshift
+   CallScript -1
+ElseIf $repVal1 == 2
+   Echo Image Shift offsets calibration has been skipped.
+ElseIf $repVal1 == 3
+   SetColumnOrGunValve 0
+   OKBox LowDoseWizard aborted as per user request. Column Valves are closed.
+   Exit LowDoseWizard aborted as per user request. Column Valves are closed.
+Endif
+ParseQuotedStrings 0
+
+####################TIMING#######################
+ElapsedTickTime $start
+TIME = $repVal1
+Echo Imageshift took $TIME sec
+####################TIMING#######################
+#################################################
+# Call the TUNE scope routine
+#################################################
+####################TIMING#######################
+ReportTickTime
+start = $repVal1
+####################TIMING#######################
+
+ParseQuotedStrings 1
+header = { 'Do you want to TUNE astigmatism and coma? NOTE: This will only work if your support foil or sample gives sufficient Thon rings!' }
+prompt1 = { '1: YES' }
+prompt2 = { '2: NO, but continue with the Wizard.' }
+prompt3 = { '3: Get me out of the Wizard.' }
+buttons = { '1: Yes' '2: No' '3: Abort Wizard' }
+ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+If $repVal1 == 1
+   FindScriptByName wizard_tune
+   CallScript -1
+ElseIf $repVal1 == 2
+   YesNoBox Do you want to insert and center an objective aperture?
+   If $repVal1 == 1
+      FindScriptByName wizard_objap
+      CallScript -1
+   ElseIf $repVal1 == 2
+      Echo No objective aperture inserted.
+   Endif
+ElseIf $repVal1 == 3
+   SetColumnOrGunValve 0
+   OKBox LowDoseWizard aborted as per user request. Column Valves are closed.
+   Exit LowDoseWizard aborted as per user request. Column Valves are closed.
+Endif
+ParseQuotedStrings 0
+
+####################TIMING#######################
+ElapsedTickTime $start
+TIME = $repVal1
+Echo Tuning took $TIME sec
+####################TIMING#######################
+#################################################
+# Wrap things up
+#################################################
+SetColumnOrGunValve 0
+
+#################################################
+# Close parameter text file if open
+#################################################
+
+IsTextFileOpen PAR
+If $repVal1 == 1
+   CloseTextFile PAR
+   Echo
+   Echo A LowDoseWizard parameter file (ldw_parameters.txt) has been saved to the current SerialEM working directory and can be used to reapply the same parameters in future sessions.
+Endif
+
+#################################################
+# Generate SUMMARY txt file
+#################################################
+FindScriptByName wizard_summary
+CallScript -1
+
+OKBox Completed all requested LowDoseWizard routines. NOTE: There are still some things that need to be done. See the LOG for details.
+Echo
+Echo =================================================
+Echo Completed all requested LowDoseWizard routines.
+Echo Things that still need to be done:
+Echo ***'Shift To Marker' to correct for the offset between grid map (atlas) and Search (i.e. the Low Dose areas).
+Echo ***Define your Focus position.
+Echo ***Setup Frame saving in Record.
+Echo ***Tune the Energy Filter, if applicable.
+Echo ***It is recommended to (again) perform astigmatism and coma-free alignement (microscope tuning) just before starting data acquisition.
+Echo ***Calibrate Coma vs. Image shift if necessary.
+Echo NOTE: Column Valves are closed.
+Echo =================================================
+Echo
+Exit

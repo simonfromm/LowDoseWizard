@@ -1,0 +1,520 @@
+MacroName wizard_optics
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_optics
+# Author: Simon Fromm
+# Version: 1.0.1
+# SerialEM version: 4.2.X or higher
+# Last update: 18.06.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+SuppressReports
+
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Starting LowDoseWizard OPTICS routine
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+
+#################################################
+# Read in optics config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile optics $repVal1\wizard_optics_config.txt
+CallStringArray optics
+
+#################################################
+# Check if parameter file from previous session is present
+#################################################
+
+ReportDirectory
+dir = $repVal1
+DoesFileExist $dir\ldw_parameters.txt
+If $repVal1 == 0
+   paramfile = 0
+   reload = 0
+   SkipTo Prompts
+Elseif $repVal1 == 1
+   paramfile = 1
+   YesNoBox A LowDoseWizard parameters file has been found inside the current working directory. Do you want to use it instead of defining new parameters?
+   If $repVal1 == 1
+      Echo Using existing parameters file.
+      ReadStringsFromFile param $dir\ldw_parameters.txt
+      CallStringArray param
+      IsVariableDefined magR
+      If $repVal1 == 0
+         OKBox A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+         Exit  A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+      Endif
+      reload = 1
+      SkipTo Execution
+   Elseif $repVal1 == 0
+      reload = 0
+      SkipTo Prompts
+   Endif
+Endif
+
+#################################################
+# User prompts
+#################################################
+Prompts:
+
+If $EnableTomo == 0
+   type := 2
+Else
+   ParseQuotedStrings 1
+   header = { 'Is this a' }
+   prompt1 = { '1: Tomo OR' }
+   prompt2 = { '2: SPA session?' }
+   buttons = { '1:Tomo' '2: SPA'}
+   ThreeChoiceBox header prompt1 prompt2 buttons
+   If $repVal1 == 1
+      Echo This is a Tomo session.
+      type := 1
+   ElseIf $repVal1 == 2
+      Echo This is a SPA session.
+      type := 2
+   Endif
+Endif
+
+If $type == 1
+   EnterDefaultedNumber $Mag_tomo_$Mag_tomo_default -1 Enter the Record mag in kx: ($Pix_tomo_0 A/px -> $Mag_tomo_0 kx; \
+   $Pix_tomo_1 -> $Mag_tomo_1; $Pix_tomo_2 -> $Mag_tomo_2; $Pix_tomo_3 -> $Mag_tomo_3; $Pix_tomo_4 -> $Mag_tomo_4)
+   mag_R := $repVal1
+   magR := $mag_R * 1000
+   IsVariableDefined SpotR_$magR
+   If $repVal1 == 0
+      configured = 0
+   Else
+      configured = 1
+   Endif
+   If $configured == 0
+      OKBox Chosen Record mag is not configured. Please choose a configured Record mag.
+      Echo Chosen Record mag is not configured. Please choose a configured Record mag.
+      EnterDefaultedNumber $Mag_tomo_$Mag_tomo_default -1 Enter the Record mag in kx: ($Pix_tomo_0 A/px -> $Mag_tomo_0 kx; \
+      $Pix_tomo_1 -> $Mag_tomo_1; $Pix_tomo_2 -> $Mag_tomo_2; $Pix_tomo_3 -> $Mag_tomo_3; $Pix_tomo_4 -> $Mag_tomo_4)
+      mag_R := $repVal1
+      magR := $mag_R * 1000
+      IsVariableDefined SpotR_$magR
+      If $repVal1 == 0
+         configured = 0
+      Else
+         configured = 1
+      Endif
+      If $configured == 0
+         OKBox Chosen Record mag is not configured. LowDoseWizard is aborted.
+         Exit Chosen Record mag is not configured. LowDoseWizard is aborted.
+      Endif
+   Endif
+   Echo Record mag chosen to be $mag_R kx.
+   ParseQuotedStrings 1
+   header = { 'How much detailed do you need in the lamella/square maps? This will define your Search magnification.'}
+   prompt1 = { '1: I want to see lots of details ($Mag_lamella_0 x).' }
+   prompt2 = { '2: Fine if I can recognize some shapes ($Mag_lamella_1 x).' }
+   prompt3 = { '3: Fine as long as I see something ($Mag_lamella_2 x).' }
+   buttons = { '1: High' '2: Medium' '3: Low' }
+   ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+   If $repVal1 == 1
+      magS := $Mag_lamella_0
+      Echo Lamella/square maps will be acquired at the same mag as View ($Mag_lamella_0 x).
+   ElseIf $repVal1 == 2
+      magS := $Mag_lamella_1
+      Echo Lamella/square maps will be acquired at $Mag_lamella_1 x.
+   ElseIf $repVal1 == 3
+      magS := $Mag_lamella_2
+      Echo Lamella/square maps will be acquired with the lowest SA mag ($Mag_lamella_2 x).
+   Endif
+   ParseQuotedStrings 0
+ElseIf $type == 2
+   EnterDefaultedNumber $Mag_SPA_$Mag_SPA_default -1 Enter the Record magnification in kx: ($Pix_SPA_0 A/px -> $Mag_SPA_0 kx; \
+   $Pix_SPA_1 -> $Mag_SPA_1; $Pix_SPA_2 -> $Mag_SPA_2; $Pix_SPA_3 -> $Mag_SPA_3)
+   mag_R := $repVal1
+   magR := $mag_R * 1000
+   IsVariableDefined SpotR_$magR
+   If $repVal1 == 0
+      configured = 0
+   Else
+      configured = 1
+   Endif
+   If $configured == 0
+      OKBox Chosen Record mag is not configured. Please choose a configured Record mag.
+      Echo Chosen Record mag is not configured. Please choose a configured Record mag.
+      EnterDefaultedNumber $Mag_SPA_$Mag_SPA_default -1 Enter the Record magnification in kx: ($Pix_SPA_0 A/px -> $Mag_SPA_0 kx; \
+      $Pix_SPA_1 -> $Mag_SPA_1; $Pix_SPA_2 -> $Mag_SPA_2; $Pix_SPA_3 -> $Mag_SPA_3)
+      mag_R := $repVal1
+      magR := $mag_R * 1000
+      IsVariableDefined SpotR_$magR
+      If $repVal1 == 0
+         configured = 0
+      Else
+         configured = 1
+      Endif
+      If $configured == 0
+         OKBox Chosen Record mag is not configured. LowDoseWizard is aborted.
+         Exit Chosen Record mag is not configured. LowDoseWizard is aborted.
+      Endif
+   Endif
+   Echo Record mag chosen to be $mag_R kx.
+   EnterDefaultedNumber 1.2 1 Which nominal hole size does your grid have (in micrometer)?
+   hole_size := $repVal1
+   Echo Foil hole size chosen to be $hole_size um.
+   ParseQuotedStrings 1
+   header = { 'What support foil (NOT mesh) material does your grid have?' }
+   prompt1 = { 'Carbon, e.g. Quantifoil or C-flat' }
+   prompt2 = { 'Gold, e.g. UltrAuFoil or HexAuFoil' }
+   buttons = { 'Carbon' 'Gold' }
+   ThreeChoiceBox header prompt1 prompt2 buttons
+   If $repVal1 == 1
+      foil_type := 0
+      Echo Foil material chosen to be carbon.
+   ElseIf $repVal1 == 2
+      foil_type := 1
+      Echo Foil material chosen to be gold.
+   Endif
+   ParseQuotedStrings 0
+   magS := $Mag_SA_low
+Endif
+
+#################################################
+# Jump to here if parameter file is used
+#################################################
+
+Execution:
+
+#################################################
+# Retract objective aperture if inserted
+#################################################
+
+ReportApertureSize 2
+If $repVal1 != 0
+   SetApertureSize 2 0
+Endif
+
+#################################################
+# Determine optimal view mag for given foil hole size
+#################################################
+
+If $type == 1
+   magV = $Mag_V_low
+Elseif $type == 2
+   fov_view = $hole_size * 1000 * $FOV_V
+   SuppressReports
+   CameraProperties
+   camera = $repVal6
+   Loop 40 index
+      CameraProperties $camera $index
+      fov_index = $repVal1 * $repVal5
+      If $fov_index <= $fov_view
+         indV = $index - 1
+         Break
+      Endif
+   EndLoop
+   SetMagIndex $indV
+   ReportMag
+   magV = $repVal1
+   If $magV < $Mag_V_low
+      magV = $Mag_V_low
+   Elseif $magV > $Mag_V_high
+      magV = $Mag_V_high
+   Endif
+Endif
+
+#################################################
+# Set spot size, C2 aperture size, C2 lens, minicondenser lens, defocus offset and energy filter slit width/offset
+#################################################
+# Record
+spR = $SpotR_$magR
+IsVariableDefined C2apertureR
+If $repVal1 == 1
+   c2apR = $C2apertureR
+Else
+   c2apR = $C2apertureR_$magR
+Endif
+c2R = $C2lensR_$magR-$spR-$c2apR
+IsVariableDefined MiniR
+If $repVal1 == 1
+    probeR = $MiniR
+Else
+    probeR = $MiniR_$magR
+Endif
+wR = $EslitWidthR
+oR = $EslitOffsetR
+
+# View
+spV = $spR
+c2apV = $c2apR
+c2V = $C2lensV_$magV-$spV-$c2apV
+IsVariableDefined MiniV
+If $repVal1 == 1
+    probeV = $MiniV
+Else
+    probeV = $MiniV_$magV
+Endif
+wV = $EslitWidthV
+oV = $EslitOffsetV
+
+# Search
+spS = $spR
+IsVariableDefined C2apertureR
+If $repVal1 == 1
+   c2apS = $c2apR
+Else
+   c2apS = $C2apertureS_$magS
+Endif
+c2S = $C2lensS_$magS-$spS-$c2apS
+IsVariableDefined MiniS
+If $repVal1 == 1
+    probeS = $MiniS
+Else
+    probeS = $MiniS_$magS
+Endif
+
+# Defocus offsets and energy filter settings
+defR = $DefocusOffsetR
+If $type == 1
+   defV = $DefocusOffsetV
+   defS = $DefocusOffsetS
+   wS = $EslitWidthS
+   oS = $EslitOffsetS
+Elseif $type == 2
+   If $foil_type == 0
+      defV = $DefocusOffsetV
+      defS = $DefocusOffsetS
+      wS = $EslitWidthS
+      oS = $EslitOffsetS
+   Elseif $foil_type == 1
+      defV = $DefocusOffsetV_gold
+      wS = $EslitWidthS_plasmon
+      oS = $EslitOffsetS_plasmon
+      If $EnergyFilter == 1
+         defS = $DefocusOffsetS_plasmon
+      Else
+         defS = $DefocusOffsetS_gold
+      Endif
+   Endif
+Endif
+
+#################################################
+# Check that Record C2 aperture is inserted
+#################################################
+
+ReportApertureSize 1
+If $repVal1 != $c2apR
+   SetApertureSize 1 $c2apR
+   Echo Inserted $c2apR micron C2 aperture.
+Endif
+
+#################################################
+# Setup Low Dose in SerialEM
+#################################################
+
+SetLowDoseMode 1
+
+SetLDDefocusOffset V $defV
+SetLDDefocusOffset S $defS
+
+MoveToNavItem $empty
+
+# Record
+CallFunction set_ld-area $magR $c2R $spR $probeR $defR $wR $oR R
+
+# Reset beam shifts
+If $type == 1
+   SetUserSetting ShiftToTiltAxis 1 1
+   ResetImageShift
+   Delay 1 s
+   SetLDContinuousUpdate 0
+   SetProbeMode micro
+   ResetImageShift
+   Delay 1 s
+   SetProbeMode nano
+Elseif $type == 2
+   SetUserSetting ShiftToTiltAxis 0 1
+   SetBeamShift 0 0
+   Delay 1 s
+   SetLDContinuousUpdate 0
+   SetProbeMode micro
+   SetBeamShift 0 0
+   Delay 1 s
+   SetProbeMode nano
+Endif
+
+# Focus
+SetLDContinuousUpdate 1
+CopyLowDoseArea R F
+UpdateLowDoseParams F 1
+SetAxisPosition F 0 0
+
+# Trial
+CopyLowDoseArea R T
+UpdateLowDoseParams T 1
+
+# View
+ReportApertureSize 1
+If $repVal1 != $c2apV
+   SetApertureSize 1 $c2apV
+   Echo Inserted $c2apV micron C2 aperture.
+Endif
+CallFunction set_ld-area $magV $c2V $spV $probeV $defV $wV $oV V
+
+# Search
+ReportApertureSize 1
+If $repVal1 != $c2apS
+   SetApertureSize 1 $c2apS
+   Echo Inserted $c2apS micron C2 aperture.
+Endif
+CallFunction set_ld-area $magS $c2S $spS $probeS $defS $wS $oS S
+
+# Turn off continuous update
+SetLDContinuousUpdate 0
+
+#################################################
+# Check on Flu Screen if empty area is actually empty
+#################################################
+
+SetColumnOrGunValve 1
+ScreenDown
+YesNoBox Is the 'empty' area actually empty (at least in the center)?
+If $repVal1 == 0
+   Pause Use the JOYSTICK on the right control pad to move the stage to an empty area. Use the TRACKBALL on the left control pad to center the beam if necessary. Then click Yes to continue.
+   ChangeItemLabel $empty empty_old
+   ReportStageXYZ
+   AddStagePosAsNavPoint $repVal1 $repVal2 $repVal3
+   ReportOtherItem -1
+   empty := $repVal1
+   ChangeItemLabel $empty empty
+Endif
+
+#################################################
+# Set Beam shifts
+#################################################
+
+# Insert Record C2 aperture
+ReportApertureSize 1
+If $repVal1 != $c2apR
+   Echo Inserting C2 $c2apR micron aperture.
+   SetApertureSize 1 $c2apR
+Endif
+
+# Set Record beam shift with direct alignments
+GoToLowDoseArea R
+SetDefocus $defR
+Pause Please center the beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click Yes to continue.
+
+# Insert View C2 aperture
+ReportApertureSize 1
+If $repVal1 != $c2apV
+   Echo Inserting C2 $c2apV micron aperture.
+   SetApertureSize 1 $c2apV
+Endif
+
+# Set View additional beam shift
+GoToLowDoseArea V
+SetLDAddedBeamButton
+Pause Please center the beam with the left TRACKBALL; Then click Yes to continue.
+
+# Insert Search C2 aperture
+ReportApertureSize 1
+If $repVal1 != $c2apS
+   Echo Inserting C2 $c2apS micron aperture.
+   SetApertureSize 1 $c2apS
+Endif
+
+# Set Search additional beam shift
+GoToLowDoseArea S
+SetLDAddedBeamButton
+Pause Please center the beam with the left TRACKBALL; Then click Yes to continue.
+ScreenUp
+SetLDAddedBeamButton 0
+ReportApertureSize 1
+If $repVal1 != $c2apR
+   Echo Inserting C2 $c2apR micron aperture.
+   SetApertureSize 1 $c2apR
+Endif
+
+GoToLowDoseArea R
+
+#################################################
+# Set Target Defocus
+#################################################
+
+If $type == 1
+   SetTargetDefocus $TargetDefocus_tomo
+Elseif $type == 2
+   SetTargetDefocus $TargetDefocus_SPA
+Endif
+
+#################################################
+# Set stage move on big mouse shifts
+#################################################
+
+SetUserSetting MoveStageOnBigMouseShift 1 1
+
+#################################################
+# Make variables persistent
+#################################################
+
+mag_V = $magV / 1000
+mag_S = $magS / 1000
+
+MakeVarPersistent spR
+MakeVarPersistent c2R
+MakeVarPersistent magV
+MakeVarPersistent c2V
+MakeVarPersistent defV
+MakeVarPersistent c2S
+MakeVarPersistent defS
+MakeVarPersistent wR
+MakeVarPersistent wS
+MakeVarPersistent oS
+MakeVarPersistent c2apR
+MakeVarPersistent probeR
+
+#################################################
+# Write parameter file
+#################################################
+
+If $paramfile == 0
+   OpenTextFile PAR O 1 $dir\ldw_parameters.txt
+   SkipTo Writing
+Elseif $paramfile == 1
+   If $reload == 1
+      SkipTo Finish
+   ElseIf $reload == 0
+      OpenTextFile PAR A 0 $dir\ldw_parameters.txt
+      SkipTo Writing
+   Endif
+Endif
+
+Writing:
+
+WriteLineToFile PAR type := $type
+WriteLineToFile PAR mag_R := $mag_R
+WriteLineToFile PAR magR := $magR
+WriteLineToFile PAR magS := $magS
+If $type == 2
+   WriteLineToFile PAR hole_size := $hole_size
+   WriteLineToFile PAR foil_type := $foil_type
+Endif
+
+If $paramfile == 1
+   If $reload == 0
+      CloseTextFile PAR
+   Endif
+Endif
+
+#################################################
+# Closing message
+#################################################
+Finish:
+
+OKBox Completed LowDoseWizard OPTICS routine. Record mag is $mag_R kx; View mag is $mag_V kx; Search mag is $mag_S kx.
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Completed LowDoseWizard OPTICS routine.
+Echo Record mag is $mag_R kx; View mag is $mag_V kx; Search mag is $mag_S kx.
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo

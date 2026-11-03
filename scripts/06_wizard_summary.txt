@@ -1,0 +1,77 @@
+MacroName wizard_summary
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_summary
+# Author: Simon Fromm
+# Version: 1.0
+# SerialEM version: 4.2.X or higher
+# Last update: 22.04.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+#################################################
+# Write settings into summary file
+#################################################
+
+IsVariableDefined c2R
+If $repVal1 == 0
+   SkipTo Finish
+Endif
+
+IsVariableDefined fluenceR
+If $repVal1 == 0
+   SkipTo Finish
+Endif
+
+If $EnergyFilter == 1
+   imagingmode = EFTEM
+Else
+   imagingmode = TEM
+Endif
+
+If $probeR == 0
+   probemode = nanoProbe
+Else
+   probemode = microProbe
+Endif
+
+ReportDateTime
+date = $repVal1
+OpenTextFile LDW O 0 LowDoseWizard_summary.txt
+WriteLineToFile LDW $InstituteA $InstituteB, $date
+WriteLineToFile LDW $Tem_model $Tem_special (aka '$Tem_name')
+WriteLineToFile LDW $EnergyFilter_model $Detector_model
+WriteLineToFile LDW Operating voltage = $Acc_volt kV
+WriteLineToFile LDW Cs = $Cs mm
+WriteLineToFile LDW C2 aperture = $c2apR microns
+IsVariableDefined objap
+If $repVal1 == 1
+   If $objap != 0
+      WriteLineToFile LDW Objective aperture = $objap microns
+   Else
+      WriteLineToFile LDW No objective aperture inserted.
+   Endif
+Else
+   WriteLineToFile LDW No objective aperture inserted.
+Endif
+WriteLineToFile LDW
+If $CondenserConfig == 2
+   If $EnergyFilter == 1
+      WriteLineToFile LDW Record: $mag_R kx ($pixR A/px), $fluenceR e-/A^2 fluence, $timeR-round s exposure, $fluxP-round e/px/s flux over empty area, Counting mode, spot $spR $probemode, $imagingmode $wR eV slit width
+   Else
+      WriteLineToFile LDW Record: $mag_R kx ($pixR A/px), $fluenceR e-/A^2 fluence, $timeR-round s exposure, $fluxP-round e/px/s flux over empty area, Counting mode, spot $spR $probemode, $imagingmode
+   Endif
+Elseif $CondenserConfig == 3
+   If $EnergyFilter == 1
+      WriteLineToFile LDW Record: $mag_R kx ($pixR A/px), $fluenceR e-/A^2 fluence, $timeR-round s exposure, $fluxP-round e/px/s flux over empty area, Counting mode, spot $spR $probemode, $imagingmode $wR eV slit width, Beam size $c2R um
+   Else
+      WriteLineToFile LDW Record: $mag_R kx ($pixR A/px), $fluenceR e-/A^2 fluence, $timeR-round s exposure, $fluxP-round e/px/s flux over empty area, Counting mode, spot $spR $probemode, $imagingmode, Beam size $c2R um
+   Endif
+Endif
+
+Echo
+Echo A LowDoseWizard summary file (LowDoseWizard_summary.txt) containing all relevant parameters for image processing has been saved into the current SerialEM working directory.
+Echo
+
+Finish:

@@ -1,0 +1,361 @@
+MacroName wizard_camera
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_camera
+# Author: Simon Fromm
+# Version: 1.0.1
+# SerialEM version: 4.2.X or higher
+# Last update: 19.06.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+SuppressReports
+
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Starting LowDoseWizard CAMERA routine
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+
+#################################################
+# Read in camera config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile camera $repVal1\wizard_camera_config.txt
+CallStringArray camera
+
+#################################################
+# Check if parameter file from previous session is present
+#################################################
+
+IsTextFileOpen PAR
+If $repVal1 == 1
+   paramnew = 1
+   reload = 0
+   SkipTo Prompts
+Else
+   paramnew = 0
+Endif
+
+ReportDirectory
+dir = $repVal1
+DoesFileExist $dir\ldw_parameters.txt
+If $repVal1 == 0
+   paramfile = 0
+   reload = 0
+   SkipTo Prompts
+Elseif $repVal1 == 1
+   paramfile = 1
+   YesNoBox A LowDoseWizard parameters file has been found inside the current working directory. Do you want to use it instead of defining new parameters?
+   If $repVal1 == 1
+      ReadStringsFromFile param $dir\ldw_parameters.txt
+      CallStringArray param
+      IsVariableDefined fluenceR
+      If $repVal1 == 0
+         OKBox A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+         Exit A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+      Endif
+      IsVariableDefined foil_type
+      If $repVal1 == 0
+         OKBox A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+         Exit A faulty or incomplete parameter file has been loaded. It's best to delete the file and restart the LowDoseWizard.
+      Endif
+      Echo Using existing parameters file.
+      reload = 1
+      SkipTo Execution
+   Elseif $repVal1 == 0
+      reload = 0
+      SkipTo Prompts
+   Endif
+Endif
+
+#################################################
+# User prompts
+#################################################
+Prompts:
+
+IsVariableDefined type
+If $repVal1 == 0
+   If $EnableTomo == 0
+      type := 2
+   Else
+      ParseQuotedStrings 1
+      header = { 'Is this a' }
+      prompt1 = { '1: Tomo OR' }
+      prompt2 = { '2: SPA session?' }
+      buttons = { '1:Tomo' '2: SPA'}
+      ThreeChoiceBox header prompt1 prompt2 buttons
+      If $repVal1 == 1
+         Echo This is a Tomo session.
+         type := 1
+      ElseIf $repVal1 == 2
+         Echo This is a SPA session.
+         type := 2
+      Endif
+   Endif
+Endif
+ParseQuotedStrings 0
+
+If $type == 1
+   EnterDefaultedNumber $FluenceR_tomo 1 Which fluence (dose) per tilt in e-/A^2 do you want to have?
+   fluenceR := $repVal1
+   Echo Fluence per tilt chosen to be $fluenceR e-/A^2.
+   Echo
+ElseIf $type == 2
+   EnterDefaultedNumber $FluenceR_SPA -1 Which fluence (dose) in e-/A^2 do you want your record exposures to have?
+   fluenceR := $repVal1
+   Echo Fluence per exposure chosen to be $fluenceR e-/A^2.
+   Echo
+   IsVariableDefined foil_type
+   If $repVal1 == 0
+      ParseQuotedStrings 1
+      header = { 'What support foil (NOT mesh) material does your grid have?' }
+      prompt1 = { 'Carbon, e.g. Quantifoil or C-flat' }
+      prompt2 = { 'Gold, e.g. UltrAuFoil or HexAuFoil' }
+      buttons = { 'Carbon' 'Gold' }
+      ThreeChoiceBox header prompt1 prompt2 buttons
+      If $repVal1 == 1
+         foil_type := 0
+         Echo Foil material chosen to be carbon.
+      ElseIf $repVal1 == 2
+         foil_type := 1
+         Echo Foil material chosen to be gold.
+      Endif
+      ParseQuotedStrings 0
+   Endif
+Endif
+
+#################################################
+# Jump to here if parameter file is used
+#################################################
+
+Execution:
+
+#################################################
+# Calibrate dose and caluclate exposures times
+#################################################
+MoveToNavItem $empty
+
+# Set Preview camera settings for dose calibration
+CallFunction set_camera $ExposureTimeP_flux $BinP $FracP $FramesP $AlignP $PluginP $ModeP $ProcP P
+
+# Calculate and determine exposure time to get user defined e-/A^2 in record
+GoToLowDoseArea R
+SetColumnOrGunValve 1
+ScreenDown
+Pause Please center the beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click Yes to continue.
+ScreenUp
+If $EnergyFilter == 1
+   If $UseSerialEMRefineZLP == 1
+      RefineZLP
+      If $EnergyFilterType == 1
+         Pause Optional: You can perform daily Selectris tuning (Isochomaticity/Distortions) in Sherpa now; \
+         Then click Yes to contiune.
+      Endif
+   Elseif $UseSerialEMRefineZLP == 0
+      If $EnergyFilterType == 1
+         Pause Please perform "Center ZLP" and optionally daily Selctris tuning (Isochromaticity/Distortions) \
+         in Sherpa now; Then click Yes to continue.
+      Elseif $EnergyFilterType == 2
+         Pause Please perform "Center ZLP" in Digital Micrograph; Then click Yes to continue.
+      Endif
+   Endif
+Endif
+Delay 3 sec
+L
+ElectronStats
+fluxP = $repVal5
+fluxP-round = ROUND $fluxP 1
+SetBinning R 1
+ReportCurrentPixelSize R
+pixR = $repVal1 * 10
+pix2R = $pixR * $pixR
+fluxRA = $fluxP / $pix2R
+timeR =  $fluenceR / $fluxRA
+timeR-round = ROUND $timeR 2
+CalibrateElectronDose
+
+# Preview
+If $type == 1
+   timeP = $FluenceP_tomo / $fluxRA
+   If $timeP < $ExposureTime_min
+      timeP = $ExposureTime_min
+      timeP-round = $ExposureTime_min
+   Else
+      timeP-round = ROUND $timeP 2
+   Endif
+ElseIf $type == 2
+   timeP = $ExposureTimeP_SPA
+Endif
+
+# Focus
+If $type == 1
+   timeF = $FluenceF_tomo / $fluxRA
+ElseIf $type == 2
+   timeF = $ExposureTimeF_SPA
+Endif
+
+# Trial
+timeT = $timeF
+
+# View
+If $CondenserConfig == 2
+   GoToLowDoseArea V
+   Delay 3 sec
+   GoToLowDoseArea R
+   Delay 3 sec
+   GoToLowDoseArea V
+   SetLDAddedBeamButton
+   ScreenDown
+   Pause Please center the beam with the left TRACKBALL; Then click Yes to continue.
+   ScreenUp
+   SetLDAddedBeamButton 0
+Endif
+
+CallFunction set_camera $ExposureTimeV_flux $BinV $FracV $FramesV $AlignV $PluginV $ModeV $ProcV V
+V
+ElectronStats
+fluxV = $repVal5
+SetBinning V 1
+ReportCurrentPixelSize V
+pixV = $repVal1 * 10
+pix2V = $pixV * $pixV
+fluxVA = $fluxV / $pix2V
+If $type == 1
+   timeV = $FluenceV_tomo / $fluxVA
+   If $timeV < $ExposureTime_min
+      timeV = $ExposureTime_min
+   Endif
+ElseIf $type == 2
+   timeV = $FluenceV_SPA / $fluxVA
+   If $timeV < $ExposureTime_min
+      timeV = $ExposureTime_min
+   Endif
+Endif
+
+# Search
+If $type == 1
+   modeS = $ModeS_zlp
+   binS = $BinS_tomo
+   CallFunction set_camera $ExposureTimeS_flux $binS $FracS $FramesS $AlignS $PluginS $modeS $ProcS S
+   Search
+   ElectronStats
+   fluxS = $repVal5
+   SetBinning S 1
+   ReportCurrentPixelSize S
+   pixS = $repVal1 * 10
+   pix2S = $pixS * $pixS
+   fluxSA = $fluxS / $pix2S
+   timeS = $FluenceS_tomo / $fluxSA
+   If $timeS > $ExposureTimeS_max
+      timeS = $ExposureTimeS_max
+   Endif
+ElseIf $type == 2
+   binS = $BinS_SPA
+   If $foil_type == 0
+      timeS = $ExposureTimeS_SPA_zlp
+      modeS = $ModeS_zlp
+   Elseif $foil_type == 1
+      If $EnergyFilter == 1
+         timeS = $ExposureTimeS_SPA_plasmon
+         modeS = $ModeS_plasmon
+      Else
+         timeS = $ExposureTimeS_SPA_zlp
+         modeS = $ModeS_zlp
+      Endif
+   Endif
+Endif
+
+#################################################
+# Set camera parameters for each low dose area
+#################################################
+
+# Preview
+CallFunction set_camera $timeP $BinP $FracP $FramesP $AlignP $PluginP $ModeP $ProcP P
+
+# Record
+CallFunction set_camera $timeR $BinR $FracR $FramesR $AlignR $PluginR $ModeR $ProcR R
+
+# Focus
+CallFunction set_camera $timeF $BinF $FracF $FramesF $AlignF $PluginF $ModeF $ProcF F
+
+# Trial
+CallFunction set_camera $timeT $BinT $FracT $FramesT $AlignT $PluginT $ModeT $ProcT T
+
+# View
+CallFunction set_camera $timeV $BinV $FracV $FramesV $AlignV $PluginV $ModeV $ProcV V
+
+# Search
+CallFunction set_camera $timeS $binS $FracS $FramesS $AlignS $PluginS $modeS $ProcS S
+
+#################################################
+# Make variables persistent
+#################################################
+
+MakeVarPersistent ModeV
+MakeVarPersistent timeV
+MakeVarPersistent modeS
+MakeVarPersistent timeS
+MakeVarPersistent timeR-round
+MakeVarPersistent fluxP-round
+MakeVarPersistent pixR
+
+#################################################
+# Write parameter file
+#################################################
+
+If $paramnew == 1
+   SkipTo Writing
+Elseif $paramnew == 0
+   If $paramfile == 1
+      If $reload == 1
+         SkipTo Finish
+      Elseif $reload == 0
+         OpenTextFile PAR A 0 $dir\ldw_parameters.txt
+         SkipTo Writing
+      Endif
+   Elseif $paramfile == 0
+      OpenTextFile PAR O 0 $dir\ldw_parameters.txt
+      SkipTo Writing
+   Endif
+Endif
+
+Writing:
+
+WriteLineToFile PAR fluenceR := $fluenceR
+
+If $paramnew == 0
+   If $reload == 0
+      CloseTextFile PAR
+      SkipTo Finish
+   Endif
+   If $paramnew == 0
+      CloseTextFile PAR
+      SkipTo Finish
+   Endif
+Endif
+
+#################################################
+# Closing messages
+#################################################
+Finish:
+
+If $type == 1
+   OKBox Completed LowDoseWizard CAMERA routine. Record exposure time is $timeR-round sec, Preview exposure time is $timeP-round sec.
+   Echo
+   Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+   Echo Completed LowDoseWizard CAMERA routine.
+   Echo Record exposure time is $timeR-round sec, Preview exposure time is $timeP-round sec.
+   Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+   Echo
+ElseIf $type == 2
+   OKBox Completed LowDoseWizard CAMERA routine. Record exposure time is $timeR-round sec.
+   Echo
+   Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+   Echo Completed LowDoseWizard CAMERA routine.
+   Echo Record exposure time is $timeR-round sec.
+   Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+   Echo
+Endif

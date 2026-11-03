@@ -1,0 +1,374 @@
+MacroName wizard_imageshift
+
+##################DO NOT EDIT ANYTHING IN THIS SCRIPT!#############
+# Name: wizard_imageshift
+# Author: Simon Fromm
+# Version: 1.0.1
+# SerialEM version: 4.2.X or higher
+# Last update: 29.06.2026
+# Support: simon.fromm@embl.de
+# DOES NOT WORK AS STANDALONE. Needs to be called via the LowDoseWizard script
+###################################################################
+
+SuppressReports
+
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Starting LowDoseWizard IMAGE SHIFT routine
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+
+#################################################
+# Read in optics config file
+#################################################
+
+ReportSystemPath
+ReadStringsFromFile optics $repVal1\wizard_optics_config.txt
+CallStringArray optics
+
+#################################################
+# Check that Record C2 aperture is inserted
+#################################################
+
+IsVariableDefined c2apR
+If $repVal1 == 0
+   IsVariableDefined C2apertureR
+   If $repVal1 == 0
+      GoToLowDoseArea R
+      ReportMag
+      magR := $repVal1
+      c2apR := $C2apertureR_$magR
+   Else
+      c2apR := $C2apertureR
+   Endif
+Endif
+ReportApertureSize 1
+If $repVal1 != $c2apR
+   SetApertureSize 1 $c2apR
+   Echo Inserted $c2apR micron C2 aperture.
+Endif
+
+#################################################
+# Set area for image shift calibration
+#################################################
+
+MoveToNavItem $sample
+
+# Reset old IS offsets
+SetLowDoseShiftOffset 0 0 0
+SetLowDoseShiftOffset 1 0 0
+
+# Take a view image to check if one gets a suitable image for eucentricity and refine if necessary
+SetColumnOrGunValve 1
+V
+
+YesNoBox Is the current image/area suitable for finding eucentricity?
+If $repVal1 == 0
+   CallFunction drag_V
+   ChangeItemLabel $sample sample_old
+   ReportStageXYZ
+   AddStagePosAsNavPoint $repVal1 $repVal2 $repVal3
+   ReportOtherItem -1
+   sample := $repVal1
+   ChangeItemLabel $sample sample
+Endif
+
+# Reset the Focus position
+SetAxisPosition F 0
+
+# Find Eucentricity
+CallFunction ZwithV
+CallFunction ZwithG
+UpdateItemZ $sample
+MoveToNavItem $sample
+
+# Take a view image to check for features for finding image shift offsets
+V
+
+YesNoBox Does the image contain features suitable for image shift offset calibration (e.g. some contamination, membranes or foil hole edge)?
+If $repVal1 == 0
+   CallFunction drag_V
+Endif
+
+# Refine the position for the actual calibration with Preview
+GoToLowDoseArea R
+ScreenDown
+OKBox Please center the beam with DIRECT ALIGNMENTS --> Tomo Beam shift; Then click OK to continue
+ScreenUp
+SetDefocus -2
+L
+
+YesNoBox Does the image contain features suitable for image shift offset calibration (e.g. some contamination, membranes or foil hole edge)?
+If $repVal1 == 0
+   CallFunction drag_P
+Endif
+
+IsVariableDefined c2apR
+If $repVal1 == 0
+   ReportApertureSize 1
+   c2apR = $repVal1
+Endif
+
+#################################################
+# Image shift offset calibration
+#################################################
+
+OKBox Image shift offsets will now be found using an automated routine. This can produce incorrect results, \
+so please follow the routine on the screen. If shifts above the threshold ($MaxISOffsetV um for View, $MaxISOffsetS um for Search) are detected, you will be given the choice to redo the routine at a new area.
+
+# View
+FindLowDoseShiftOffset 0
+ReportLDShiftOffset 0
+x-shift = $repVal1
+y-shift = $repVal2
+x-shift_abs = ABS $x-shift
+y-shift_abs = ABS $y-shift
+x-shift_view = ROUND $x-shift 2
+y-shift_view = ROUND $y-shift 2
+
+shift-view = { $x-shift_abs $y-shift_abs }
+ArrayStatistics shift-view
+If $repVal3 > $MaxISOffsetV
+   Echo
+   Echo WARNING: Determined View image shift offset is bigger than the threshold of $MaxISOffsetV um ($x-shift_view / $y-shift_view um in X/Y).
+   Echo WARNING: Automatic View image shift offset calibration might have produced a wrong result.
+   Echo
+   ParseQuotedStrings 1
+   header = { 'A shift offset larger than the set threshold ($MaxISOffsetV um) has been determined. Would you like to' }
+   prompt1 = { '1: redo the procedure at a different area?' }
+   prompt2 = { '2: keep the determined View offset and move on?' }
+   prompt3 = { '3: reset the View offset to 0 and move on?' }
+   buttons = { '1: Redo' '2: Keep' '3: Reset' }
+   ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+   ParseQuotedStrings 0
+   If $repVal1 == 1
+      SkipTo ViewRedo
+   Elseif $repVal1 == 2
+      Echo View shift offsets are kept as determined ($x-shift_view / $y-shift_view um).
+      Echo NOTE: Those shifts are above the set system threshold ($MaxISOffsetV um).
+      Echo
+      SkipTo Search
+   Elseif $repVal1 == 3
+      Echo View shift offsets are reset to 0.
+      Echo
+      SetLowDoseShiftOffset 0 0 0
+      SkipTo Search
+   Endif
+Else
+   OKBox Determined View image shift offset is $x-shift_view / $y-shift_view um in X/Y.
+   Echo
+   Echo Determined View image shift offset is $x-shift_view / $y-shift_view um in X/Y.
+   Echo
+   SkipTo Search
+Endif
+
+# View redo
+ViewRedo:
+OKBox You have chosen to redo the View image shift offset calibration at a different area. A Search image is taken first to allow you to identify and move to an area with suitable features for image shift offset calibration.
+SetLowDoseShiftOffset 0 0 0
+Search
+CallFunction drag_S
+V
+YesNoBox Does the new area contain features suitable for image shift offset calibration?
+If $repVal1 == 0
+   CallFunction drag_V
+Endif
+L
+YesNoBox Does the image contain features suitable for image shift offset calibration (e.g. some contamination, membranes or foil hole edge)?
+If $repVal1 == 0
+   CallFunction drag_P
+Endif
+OKBox View image shift offest calibration is restarted now. Please follow the routine on the screen. \
+If shifts above the threshold ($MaxISOffsetV um) are detected again, you will need to set image shift offsets manually after the LDW.
+FindLowDoseShiftOffset 0
+ReportLDShiftOffset 0
+x-shift = $repVal1
+y-shift = $repVal2
+x-shift_abs = ABS $x-shift
+y-shift_abs = ABS $y-shift
+x-shift_view = ROUND $x-shift 2
+y-shift_view = ROUND $y-shift 2
+
+shift-view = { $x-shift_abs $y-shift_abs }
+ArrayStatistics shift-view
+If $repVal3 > $MaxISOffsetV
+   Echo
+   Echo WARNING: Determined View image shift offset is again bigger than the threshold of $MaxISOffsetV um ($x-shift_view / $y-shift_view um in X/Y).
+   Echo NOTE: View image shift offset is reset to 0 and image shift offset routine aborted.
+   Echo
+   SetLowDoseShiftOffset 0 0 0
+   OKBox Routine is aborted due to repeated View image shift offset determination above the threshold.
+   SkipTo Finish
+Else
+   OKBox Determined View image shift offset is $x-shift_view / $y-shift_view um in X/Y.
+   Echo
+   Echo Determined View image shift offset is $x-shift_view / $y-shift_view um in X/Y.
+   Echo
+Endif
+
+# Search
+Search:
+
+If $c2apR < 50
+   OKBox Inserted C2 aperture is <50 micorns. The Search FOV might be cut off by the C2 aperture. This should be no problem.
+Endif
+
+GoToLowDoseArea V
+ReportMag
+magV := $repVal1
+GoToLowDoseArea S
+ReportMag
+magS := $repVal1
+
+If $magV == $magS
+   ReportLDShiftOffset 0
+   SetLowDoseShiftOffset 1 $repVal1 $repVal2
+   Echo View and Search mags are identical. Determined View image shift offsets copied to Search.
+   SkipTo Closing
+Endif
+
+If $EnergyFilter == 1
+   ReportEnergyFilter
+   If $repVal2 == $EslitOffsetS_plasmon
+      tmpplasmon = 1
+      Echo Search is setup for plasmon imaging. It will be temporarily set to ZLP imaging for finding image shift offsets.
+      Echo After the routine, it will be set back to plasmon imaging.
+      ReportEnergyFilter
+      tmpwidth = $repVal1
+      tmpoffset = $repVal2
+      SetLDContinuousUpdate 1
+      SetSlitWidth $EslitWidthS
+      SetEnergyLoss $EslitOffsetS
+      UpdateLowDoseParams S 1
+      SetLDContinuousUpdate 0
+   Else
+      tmpplasmon = 0
+   Endif
+Else
+   tmpplasmon = 0
+Endif
+
+FindLowDoseShiftOffset 1
+ReportLDShiftOffset 1
+x-shift = $repVal1
+y-shift = $repVal2
+x-shift_abs = ABS $x-shift
+y-shift_abs = ABS $y-shift
+x-shift_search = ROUND $x-shift 2
+y-shift_search = ROUND $y-shift 2
+
+shift-search = { $x-shift_abs $y-shift_abs }
+ArrayStatistics shift-search
+If $repVal3 > $MaxISOffsetS
+   Echo
+   Echo WARNING: Determined Search image shift offset is bigger than the threshold of $MaxISOffsetS um ($x-shift_search / $y-shift_search um in X/Y).
+   Echo WARNING: Automatic Search image shift offset calibration might have produced a wrong result.
+   Echo
+   ParseQuotedStrings 1
+   header = { 'A shift offset larger than the set threshold ($MaxISOffsetS um) has been determined. Would you like to' }
+   prompt1 = { '1: redo the procedure at a different area?' }
+   prompt2 = { '2: keep the determined Search offset and move on?' }
+   prompt3 = { '3: reset the Search offset to 0 and move on?' }
+   buttons = { '1: Redo' '2: Keep' '3: Reset' }
+   ThreeChoiceBox header prompt1 prompt2 prompt3 buttons
+   ParseQuotedStrings 0
+   If $repVal1 == 1
+      SkipTo SearchRedo
+   Elseif $repVal1 == 2
+      Echo Search shift offsets are kept as determined ($x-shift_search / $y-shift_search um).
+      Echo NOTE: Those shifts are above the set system threshold ($MaxISOffsetS um).
+      Echo
+      search_fail = 1
+      SkipTo PlasmonReset
+   Elseif $repVal1 == 3
+      Echo Search shift offsets are reset to 0.
+      Echo NOTE: Previously determined View shift offset is kept.
+      Echo
+      SetLowDoseShiftOffset 1 0 0
+      search_fail = 1
+      SkipTo PlasmonReset
+   Endif
+Else
+   OKBox Determined Search image shift offset is $x-shift_search / $y-shift_search um in X/Y.
+   Echo
+   Echo Determined Search image shift offset is $x-shift_search / $y-shift_search um in X/Y.
+   Echo
+   SkipTo PlasmonReset
+Endif
+
+SearchRedo:
+OKBox You have chosen to redo the Search image shift offset calibration at a different area. A Search image is taken first to allow you to identify and move to an area with suitable features for image shift offset calibration.
+SetLowDoseShiftOffset 1 0 0
+Search
+CallFunction drag_S
+V
+YesNoBox Does the new area contain features suitable for image shift offset calibration?
+If $repVal1 == 0
+   CallFunction drag_V
+Endif
+OKBox Search image shift offest calibration is restarted now. Please follow the routine on the screen. \
+If shifts above the threshold ($MaxISOffsetS um) are detected again, you will need to set Search image shift offsets manually after the LDW.
+FindLowDoseShiftOffset 1
+ReportLDShiftOffset 1
+x-shift = $repVal1
+y-shift = $repVal2
+x-shift_abs = ABS $x-shift
+y-shift_abs = ABS $y-shift
+x-shift_search = ROUND $x-shift 2
+y-shift_search = ROUND $y-shift 2
+
+shift-search = { $x-shift_abs $y-shift_abs }
+ArrayStatistics shift-search
+If $repVal3 > $MaxISOffsetS
+   Echo
+   Echo WARNING: Determined Search image shift offset is again bigger than $MaxISOffsetS um ($x-shift_search / $y-shift_search um in X/Y).
+   Echo Search image shift offset is reset to 0 and image shift offset routine aborted.
+   Echo NOTE: Previously determined View shift offset is kept.
+   Echo
+   search_fail = 1
+   OKBox Routine is aborted due to repeated Search image shift offset determination above the threshold.
+   SkipTo PlasmonReset
+Else
+   OKBox Determined Search image shift offset is $x-shift_search / $y-shift_search um in X/Y.
+   Echo
+   Echo Determined Search image shift offset is $x-shift_search / $y-shift_search um in X/Y.
+   Echo
+Endif
+
+PlasmonReset:
+
+If $tmpplasmon == 1
+   Echo Changing energy filter settings in Search back to plasmon imaging.
+   Echo
+   GoToLowDoseArea S
+   SetLDContinuousUpdate 1
+   SetSlitWidth $tmpwidth
+   SetEnergyLoss $tmpoffset
+   UpdateLowDoseParams S 1
+   SetLDContinuousUpdate 0
+   IsVariableDefined search_fail
+   If $repVal1 == 1
+      SkipTo Finish
+   Endif
+Else
+   IsVariableDefined search_fail
+   If $repVal1 == 1
+      SkipTo Finish
+   Endif
+Endif
+
+Closing:
+
+#################################################
+# Closing message
+#################################################
+
+OKBox Completed LowDoseWizard IMAGE SHIFT routine. Image shift offsets have been calibrated.
+Echo
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo Completed LowDoseWizard IMAGE SHIFT routine.
+Echo Image shift offsets have been calibrated.
+Echo +++++++++++++++++++++++++++++++++++++++++++++++++
+Echo
+Finish:
+GoToLowDoseArea R

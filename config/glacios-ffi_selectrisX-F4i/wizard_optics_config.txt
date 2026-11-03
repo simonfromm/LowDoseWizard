@@ -1,0 +1,193 @@
+#################################################
+# LowDoseWizard optics configuration file
+# Specific to a microscope. HERE: Glacios1, EMBL Imaging Centre
+# Save into same folder as SerialEM Properties file
+# SerialEM Low Dose Areas are abbreviated by R (Record), V (View) and S (Search)
+#################################################
+
+#################################################
+# Nominal magnifications and calibrated pixel sizes; put to 0 if not applicable
+#################################################
+
+# Five suggested record magnifications for tomography in kx and respective resulting pixel size in e/A^2; numbering starts at 0
+Mag_tomo_0 = 0
+Pix_tomo_0 = 0
+Mag_tomo_1 = 0
+Pix_tomo_1 = 0
+Mag_tomo_2 = 0
+Pix_tomo_2 = 0
+Mag_tomo_3 = 0
+Pix_tomo_3 = 0
+Mag_tomo_4 = 0
+Pix_tomo_4 = 0
+
+# default tomo mag referring to numbering from above
+Mag_tomo_default = 0
+
+# Four suggested record magnifications for SPA in kx and respective resulting pixel size in e/A^2; numbering starts at 0
+Mag_SPA_0 = 165
+Pix_SPA_0 = 0.686
+Mag_SPA_1 = 130
+Pix_SPA_1 = 0.871
+Mag_SPA_2 = 100
+Pix_SPA_2 = 1.143
+Mag_SPA_3 = 79
+Pix_SPA_3 = 1.534
+
+# default SPA mag referring to numbering from above
+Mag_SPA_default = 2
+
+# Three Suggested lamella map magnifications in x
+Mag_lamella_0 = 0
+Mag_lamella_1 = 0
+Mag_lamella_2 = 0
+
+# lowest and highest view mags to use; lowest view mag will be used for tomography, i.e. usually is the lowest possible mag with a parallel beam in nanoprobe
+Mag_V_low = 9200
+Mag_V_high = 24000
+
+# lowest SA mag in x
+Mag_SA_low = 2000
+
+#################################################
+# Objectiv apertures and diffraction mode camera length for objective aperture centering
+#################################################
+# Two objective aperture sizes used for data acquisition in micrometer
+ObjectiveAperture_1 = 100
+ObjectiveAperture_2 = 70
+
+# Camera length index used for objective aperture centering in diffration mode
+Cam_length = 17
+
+#################################################
+# C2 lens strength (2-condenser systems, % as displayed in SerialEM) or illuminated area (3-condenser systems, micrometers)
+# Nomenclature: C2lens<R,V,S>_<mag>-<spot>-<c2aperture>
+#################################################
+# Record
+C2lensR_165000-2-20 = 43.775
+C2lensR_130000-3-20 = 44.036
+C2lensR_100000-4-50 = 44.43
+C2lensR_79000-5-50 = 44.839
+
+# View
+C2lensV_24000-2-20 = 54.646
+C2lensV_24000-3-20 = 54.646
+C2lensV_24000-4-50 = 50.327
+C2lensV_24000-5-50 = 50.75
+
+C2lensV_19000-2-20 = 56.586
+C2lensV_19000-3-20 = 56.586
+C2lensV_19000-4-50 = 51.066
+C2lensV_19000-5-50 = 50.911
+
+C2lensV_15000-2-20 = 58.246
+C2lensV_15000-3-20 = 58.246
+C2lensV_15000-4-50 = 51.888
+C2lensV_15000-5-50 = 51.888
+
+C2lensV_11500-2-20 = 61.726
+C2lensV_11500-3-20 = 61.726
+C2lensV_11500-4-50 = 53.510
+C2lensV_11500-5-50 = 52.849
+
+C2lensV_9200-2-20 = 65.486
+C2lensV_9200-3-20 = 65.486
+C2lensV_9200-4-50 = 55.040
+C2lensV_9200-5-50 = 54.078
+
+# Search
+C2lensS_2000-2-50 = 71.50
+C2lensS_2000-3-50 = 72.45
+C2lensS_2000-4-50 = 72.453
+C2lensS_2000-5-50 = 72.00
+
+#################################################
+# Spot sizes; View and Search take same spot size as record; this logic is defined in the wizard_optics script
+# Nomenclature: Spot<R,V,S>_<mag>
+#################################################
+# Record
+SpotR_165000 = 2
+SpotR_130000 = 3
+SpotR_100000 = 4
+SpotR_79000 = 5
+
+#################################################
+# Minicondenser lens setting: nanoprobe -> 0, microprobe -> 1
+# Nomenclature: Mini<R,V,S>_<mag>
+# If mag has no influence on nano/microprobe, only define Mini<R,V,S> without the _<mag>
+#################################################
+# Record
+MiniR = 0
+
+# View
+MiniV = 1
+
+# Search
+MiniS = 1
+
+#################################################
+# C2 aperture sizes
+# Nomenclature: C2aperture<R,S>_<mag>
+# C2 aperture size for View is defined to be identical to Record
+# In case the C2 aperture is always the same, only define 'C2apertureR'
+#################################################
+# Record
+C2apertureR_165000 = 20
+C2apertureR_130000 = 20
+C2apertureR_100000 = 50
+C2apertureR_79000 = 50
+
+# Search
+C2apertureS_2000 = 50
+
+#################################################
+# View mag for SPA
+# Defined via a multiple of the foil hole size; e.g. '2' results in a field of view approximately twice the foil hole size
+#################################################
+FOV_V = 2
+
+#################################################
+# Defocus offsets
+#################################################
+# Record
+DefocusOffsetR = 0
+
+# carbon foil / tomo
+DefocusOffsetV = -70
+DefocusOffsetS = -70
+
+# gold foil (and plasmon if applicable)
+DefocusOffsetV_gold = -10
+DefocusOffsetS_gold = -10
+DefocusOffsetS_plasmon = 0
+
+#################################################
+# Image shift offsets
+# Maximal expected offset for View and Search offsets in microns
+#################################################
+
+MaxISOffsetV = 1
+MaxISOffsetS = 2
+
+#################################################
+# Default target defocus
+#################################################
+TargetDefocus_tomo = -6
+TargetDefocus_SPA = -2
+
+#################################################
+# Energy filter slit width and offset; if no energy filter present, set all to 0
+#################################################
+# Record
+EslitWidthR = 10
+EslitOffsetR = 0
+
+# View
+EslitWidthV = 20
+EslitOffsetV = 0
+
+# Search
+EslitWidthS = 30
+EslitOffsetS = 0
+EslitWidthS_plasmon = 15
+EslitOffsetS_plasmon = 20

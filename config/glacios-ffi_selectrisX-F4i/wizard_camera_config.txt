@@ -1,0 +1,103 @@
+#################################################
+# LowDoseWizard camera configuration file
+# Specific to a microscope. HERE: Glacios1, EMBL Imaging Centre; SelectrisX - Falcon4i
+# Save into same folder as SerialEM Properties file
+# SerialEM Low Dose Areas are abbreviated by R (Record), P (Preview), F (Focus), T (Trial), V (View) and S (Search)
+# Values for tomography and SPA are defined by _tomo and _SPA if applicable
+#################################################
+
+#################################################
+# Default exposure times (sec)
+#################################################
+ExposureTimeP_flux = 1  #exposure time for electron flux calibration
+ExposureTimeP_SPA = 0.5
+ExposureTimeF_SPA = 0.2
+ExposureTimeV_flux = 0.5
+ExposureTimeS_flux = 0.5
+ExposureTimeS_SPA_zlp = 1
+ExposureTimeS_SPA_plasmon = 2
+ExposureTimeS_max = 2 #maximal exposure time for Search; relevant for low Search mags in tomo
+ExposureTime_min = 0.1 #minimal exposure time for the camera
+
+#################################################
+# Default fluence (e/A^2)
+#################################################
+FluenceR_tomo = 3   #user can choose a different one during camera routine
+FluenceR_SPA = 50   #user can choose a different one during camera routine
+FluenceP_tomo = 0.5
+FluenceF_tomo = 3
+FluenceV_tomo = 0.05
+FluenceV_SPA = 0.1
+FluenceS_tomo = 0.25
+
+#################################################
+# Default camera binning
+#################################################
+BinR = 1
+BinP = 4
+BinF = 4
+BinT = 4
+BinV = 4
+BinS_tomo = 1
+BinS_SPA = 1
+
+#################################################
+# Default camera operating mode: Linear -> 0, Counting -> 1, Super-resolution -> 2
+#################################################
+ModeR = 1
+ModeP = 1
+ModeF = 1
+ModeT = 1
+ModeV = 0
+ModeS_zlp = 0
+ModeS_plasmon = 1
+
+#################################################
+# Dose fractionation mode: off -> 0, on (K2/K3) -> 1
+#################################################
+FracR = 0
+FracP = 0
+FracF = 0
+FracT = 0
+FracV = 0
+FracS = 0
+
+#################################################
+# Frame saving: off -> 0, on -> 1
+#################################################
+FramesR = 0
+FramesP = 0
+FramesF = 0
+FramesT = 0
+FramesV = 0
+FramesS = 0
+
+#################################################
+# Frame Alignment: off -> 0, on -> 1
+#################################################
+AlignR = 1
+AlignP = 0
+AlignF = 0
+AlignT = 0
+AlignV = 0
+AlignS = 0
+
+#################################################
+# Frame Alignment method to use: DM/Falcon processor -> 0, SerialEM Plugin -> 1, cmd file for IMOD -> 2
+#################################################
+PluginR = 0
+PluginP = 0
+PluginF = 0
+PluginT = 0
+PluginV = 0
+PluginS = 0
+
+#################################################
+# Processing: unprocessed -> 0, dark subtracted -> 1, gain-normalized -> 2
+#################################################
+ProcR = 2
+ProcP = 2
+ProcF = 2
+ProcT = 2
+ProcV = 2
+ProcS = 2

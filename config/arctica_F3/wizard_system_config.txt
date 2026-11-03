@@ -1,0 +1,24 @@
+#################################################
+# LowDoseWizard system configuration file
+# Specific to a microscope. HERE: Talos Arctica, EMBL MSB Unit
+# Save into same folder as SerialEM Properties file
+# GENERALLY NO SPACES ALLOWED
+##################################################
+
+# LowDoseWizard workflow configuration
+EnergyFilter := 0           # 0 -> NO energy filter; 1 -> energy filter
+EnergyFilterType := 0    #0 -> NO energy filter; 1 -> ThermoFisher; 2 -> Gatan
+UseSerialEMRefineZLP := 0   # 0 -> Don't use SerialEM zero-loss centering routine; 1 -> use it; set to 0 if no Energy filter available
+EnableTomo := 0             # 0 -> only SPA workflow; 1 -> Tomo and SPA workflow
+CondenserConfig := 2        # 2 -> 2-condenser system; 3 -> 3-condenser system
+
+# System information for summary file
+InstituteA := EMBL
+InstituteB := MSB          # add-on instiute name in case instiuteA is not sufficient; leave empty if no needed
+Tem_model := TalosArctica           # e.g. Glacios, TalosArctica, TitanKriosG4, cryoARM200
+Tem_special := XFEG                  # special TEM configuration; e.g. FFI, Cs-corrected; leave empty if not applicable
+Tem_name := Talos1                # internally used name tag for the microsope
+Acc_volt := 200                     # acceleration voltage in kV
+Cs := 2.7                           # objective lens Cs in mm
+EnergyFilter_model := none    # leave empty if system has no energy filter
+Detector_model := Falcon3          # e.g. Falcon4i, K3
